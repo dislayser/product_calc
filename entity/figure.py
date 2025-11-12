@@ -4,7 +4,7 @@ from dataclasses import dataclass
 class Figure:
     width: int
     height: int
-    necessary: int|None
+    necessary: int|None = None
     
     def rotated(self) -> 'Figure':
         return Figure(self.height, self.width, self.necessary)
