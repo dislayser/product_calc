@@ -1,48 +1,72 @@
 from rich.pretty import pprint as print
+from rich.table import Table
+from rich.console import Console
 from entity.figure import Figure
 from entity.container import Container
-from service.calc import CalcService
+from service.industrial_calc import IndustrialCalcService
 
 def main() -> None:
-    container = Container(width=11, height=8)
+    console = Console()
+    
+    # Промышленные параметры (например, стандартный лист 594x841 - A1)
+    container = Container(width=594, height=841, margin=5)  # 5mm технологические отступы
+    
+    # Изделия для производства
     figures = [
-        Figure(width=2, height=3, necessary=2000),
-        Figure(width=2, height=2, necessary=2000),
-        Figure(width=4, height=1, necessary=500 ),
+        Figure(width=40, height=40, necessary=200, margin=2),   # Отступ 2mm вокруг
+        Figure(width=80, height=40, necessary=100, margin=2),
+        Figure(width=60, height=60, necessary=50, margin=3),
     ]
 
-    # Создаем сервис для расчетов
-    service = CalcService(container, figures)
-    result = service.calculate_required_containers()
+    service = IndustrialCalcService(container, figures)
+    result = service.calculate_production_plan()
+    cutting_plan = service.generate_cutting_plan()
     
-    print("=" * 70)
-    print("РАСЧЕТ КОНТЕЙНЕРОВ ДЛЯ ИДЕНТИЧНОЙ УПАКОВКИ")
-    print("=" * 70)
+    console.print("\n🎯 [bold cyan]ПРОМЫШЛЕННЫЙ РАСЧЕТ РАСКРОЯ[/bold cyan]")
+    console.print("=" * 70)
     
-    print(f"Контейнер: {container}")
-    print(f"Фигуры для размещения:")
-    for fig in figures:
-        print(f"  - {fig.width}x{fig.height}: {fig.necessary} шт.")
+    # Информация о материалах
+    table = Table(title="📋 Спецификация материалов")
+    table.add_column("Параметр", style="cyan")
+    table.add_column("Значение", style="white")
     
-    print(f"ОПТИМАЛЬНАЯ СХЕМА УПАКОВКИ:")
-    for fig_key, count in result['optimal_packing_scheme'].items():
-        print(f"  - {fig_key}: {count} шт. в каждом контейнере")
+    table.add_row("Размер листа", f"{container.width} x {container.height} mm")
+    table.add_row("Технологические отступы", f"{container.margin} mm")
+    table.add_row("Полезная площадь", f"{container.area} mm²")
+    table.add_row("Требуется листов", f"{result['sheets_required']} шт.")
+    table.add_row("Эффективность раскроя", f"{result['efficiency']:.1%}")
+    table.add_row("Отходы", f"{result['waste_area']:.0f} mm²")
     
-    print(f"Эффективность использования площади: {result['efficiency_per_container']:.1%}")
+    console.print(table)
     
-    print(f"РАСЧЕТ КОЛИЧЕСТВА КОНТЕЙНЕРОВ:")
-    for fig_key, analysis in result['figures_analysis'].items():
-        print(f"  - {fig_key}: нужно {analysis['necessary']} шт., "
-              f"в контейнере {analysis['per_container']} шт. → "
-              f"требуется {analysis['containers_needed']} контейнеров")
+    # План производства
+    table = Table(title="🏭 План производства")
+    table.add_column("Изделие", style="cyan")
+    table.add_column("Нужно", style="white")
+    table.add_column("На лист", style="green")
+    table.add_column("Листов", style="yellow")
+    table.add_column("Будет произведено", style="magenta")
     
-    print(f"ИТОГО: требуется {result['containers_required']} контейнеров")
+    for fig_key, plan in result['production_plan'].items():
+        table.add_row(
+            fig_key,
+            str(plan['necessary']),
+            str(plan['per_sheet']),
+            str(plan['sheets_needed']),
+            str(plan['total_produced'])
+        )
     
-    print(f"ФАКТИЧЕСКОЕ ПРОИЗВОДСТВО:")
-    for fig_key, count in result['actual_production'].items():
-        print(f"  - {fig_key}: {count} шт.")
+    console.print(table)
     
-    print(f"Теоретический минимум контейнеров: {result['theoretical_min_containers']}")
+    # Координаты раскроя (для первого листа)
+    console.print("\n📐 [bold]Координаты раскроя (первый лист):[/bold]")
+    for placement in result['single_sheet_layout']['placements'][:10]:  # Покажем первые 10
+        fig = placement['figure']
+        console.print(
+            f"  {fig.width}x{fig.height} "
+            f"@ ({placement['x']}, {placement['y']}) "
+            f"{'🔄' if placement.get('rotated') else ''}"
+        )
 
 if __name__ == "__main__":
     main()

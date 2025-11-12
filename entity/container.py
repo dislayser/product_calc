@@ -1,16 +1,23 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import List, Tuple
 
 @dataclass
-class Container:
+class GuillotineNode:
+    x: int
+    y: int
     width: int
     height: int
-    
-    def __post_init__(self):
-        self.area = self.width * self.height
+    used: bool = False
+    right: 'GuillotineNode' = None
+    down: 'GuillotineNode' = None
+
+class Container:
+    def __init__(self, width: int, height: int, margin: int = 0):
+        self.width = width
+        self.height = height
+        self.margin = margin  # Технологические отступы по краям
+        self.area = width * height
+        self.root = GuillotineNode(margin, margin, width - 2*margin, height - 2*margin)
     
     def __str__(self) -> str:
-        return f"Container({self.width}x{self.height}, area: {self.area})"
-    
-    def __repr__(self) -> str:
-        return self.__str__()
+        return f"Container({self.width}x{self.height}, margin: {self.margin})"
